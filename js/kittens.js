@@ -1,9 +1,9 @@
 // This sectin contains some game constants. It is not super interesting
-var GAME_WIDTH = 375;
-var GAME_HEIGHT = 500;
+var GAME_WIDTH = 525;
+var GAME_HEIGHT = 700;
 
 var ENEMY_WIDTH = 75;
-var ENEMY_HEIGHT = 156;
+var ENEMY_HEIGHT = 96;
 var MAX_ENEMIES = 3;
 
 var PLAYER_WIDTH = 75;
@@ -12,10 +12,17 @@ var PLAYER_HEIGHT = 54;
 // These two constants keep us from using "magic numbers" in our code
 var LEFT_ARROW_CODE = 37;
 var RIGHT_ARROW_CODE = 39;
+var UP_ARROW_CODE = 38;
+var DOWN_ARROW_CODE = 40;
+var ENTER_KEY =13;
+
+
 
 // These two constants allow us to DRY
 var MOVE_LEFT = 'left';
 var MOVE_RIGHT = 'right';
+var MOVE_UP ="up";
+var MOVE_DOWN = "down";
 
 // Preload game images
 var images = {};
@@ -26,49 +33,62 @@ var images = {};
 });
 
 
-
+class Entity {
+    render(ctx) {
+        ctx.drawImage(this.sprite, this.x, this.y);
+    }
+}
 
 
 // This section is where you will be doing most of your coding
-class Enemy {
+class Enemy extends Entity {
     constructor(xPos) {
+        super();
         this.x = xPos;
         this.y = -ENEMY_HEIGHT;
         this.sprite = images['enemy.png'];
 
         // Each enemy should have a different speed
-        this.speed = Math.random() / 2 + 0.25;
+        this.speed = Math.random() / 3 + 0.25;
     }
 
     update(timeDiff) {
         this.y = this.y + timeDiff * this.speed;
     }
 
-    render(ctx) {
-        ctx.drawImage(this.sprite, this.x, this.y);
-    }
+   
 }
 
-class Player {
+class Player extends Entity {
     constructor() {
+        super();
         this.x = 2 * PLAYER_WIDTH;
         this.y = GAME_HEIGHT - PLAYER_HEIGHT - 10;
         this.sprite = images['player.png'];
+        this.playerColumn = 2;
+       
     }
 
     // This method is called by the game engine when left/right arrows are pressed
     move(direction) {
         if (direction === MOVE_LEFT && this.x > 0) {
             this.x = this.x - PLAYER_WIDTH;
+            this.playerColumn = this.playerColumn - 1;
         }
         else if (direction === MOVE_RIGHT && this.x < GAME_WIDTH - PLAYER_WIDTH) {
             this.x = this.x + PLAYER_WIDTH;
+            this.playerColumn = this.playerColumn + 1;
+          
         }
+        else if (direction === MOVE_UP && this.y  > 0) {
+            this.y = this.y - PLAYER_HEIGHT;
+          }
+          else if (direction === MOVE_DOWN && this.y < GAME_HEIGHT - PLAYER_HEIGHT) {
+            this.y = this.y + PLAYER_HEIGHT;
+          }
     }
 
-    render(ctx) {
-        ctx.drawImage(this.sprite, this.x, this.y);
-    }
+    
 }
 
 
@@ -120,11 +140,14 @@ class Engine {
 
         var enemySpot;
         // Keep looping until we find a free enemy spot at random
-        while (!enemySpot || this.enemies[enemySpot]) {
+        while (enemySpot === undefined || this.enemies[enemySpot]) {
             enemySpot = Math.floor(Math.random() * enemySpots);
         }
 
         this.enemies[enemySpot] = new Enemy(enemySpot * ENEMY_WIDTH);
+        this.enemies[enemySpot].enemyColumn = enemySpot;
+
+        
     }
 
     // This method kicks off the game
@@ -140,6 +163,12 @@ class Engine {
             else if (e.keyCode === RIGHT_ARROW_CODE) {
                 this.player.move(MOVE_RIGHT);
             }
+            else if (e.keyCode === UP_ARROW_CODE) {
+                this.player.move(MOVE_UP);
+            }
+            else if (e.keyCode === DOWN_ARROW_CODE) {
+                this.player.move(MOVE_DOWN);
+            }
         });
 
         this.gameLoop();
@@ -150,7 +179,6 @@ class Engine {
     During each execution of the function, we will update the positions of all game entities
     It's also at this point that we will check for any collisions between the game entities
     Collisions will often indicate either a player death or an enemy kill
-
     In order to allow the game objects to self-determine their behaviors, gameLoop will call the `update` method of each entity
     To account for the fact that we don't always have 60 frames per second, gameLoop will send a time delta argument to `update`
     You should use this parameter to scale your update appropriately
@@ -183,13 +211,13 @@ class Engine {
         if (this.isPlayerDead()) {
             // If they are dead, then it's game over!
             this.ctx.font = 'bold 30px Impact';
-            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillStyle = '#000000';
             this.ctx.fillText(this.score + ' GAME OVER', 5, 30);
         }
         else {
             // If player is not dead, then draw the score
             this.ctx.font = 'bold 30px Impact';
-            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillStyle = '#000000';
             this.ctx.fillText(this.score, 5, 30);
 
             // Set the time marker and redraw
@@ -199,8 +227,14 @@ class Engine {
     }
 
     isPlayerDead() {
-        // TODO: fix this function!
-        return false;
+        
+        var x = this.enemies.some((enemy) => {
+            if ( enemy.y + ENEMY_HEIGHT > this.player.y && enemy.enemyColumn === this.player.playerColumn && enemy.y  < this.player.y ) {
+               
+               return true;
+            }
+        });
+        return x;
     }
 }
 
